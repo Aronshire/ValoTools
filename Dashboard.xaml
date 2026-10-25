@@ -237,11 +237,15 @@
                 </Grid>
             </Border>
             <StackPanel Grid.Row="5">
-                <Border x:Name="UpdateCard" Background="#142124" BorderBrush="#28666B" BorderThickness="1" CornerRadius="13" Padding="13,11" Margin="0,0,0,10" Visibility="Collapsed">
+                <Border x:Name="UpdateCard" Background="#142124" BorderBrush="#28666B" BorderThickness="1" CornerRadius="13" Padding="13,11" Margin="0,0,0,10">
                     <StackPanel>
-                        <TextBlock Text="GÜNCELLEME" Foreground="#83D8DE" FontSize="9" FontWeight="Bold"/>
-                        <TextBlock x:Name="UpdateText" Text="Yeni sürüm denetleniyor..." Foreground="#D5E9EA" FontSize="10" TextWrapping="Wrap" Margin="0,7,0,8"/>
-                        <Button x:Name="UpdateButton" Content="GÜNCELLEMEYİ KUR  ↗" Click="UpdateButton_Click" IsEnabled="False" Height="31" Cursor="Hand" FontSize="10" FontWeight="Bold" Foreground="#F4F5F6" Background="#24686E" BorderThickness="0">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="MEVCUT SÜRÜM" Foreground="#83D8DE" FontSize="9" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="VersionText" Grid.Column="1" Text="v—" Foreground="#F4F5F6" FontFamily="./assets/fonts/#Barlow" FontSize="16" FontWeight="Bold"/>
+                        </Grid>
+                        <TextBlock x:Name="UpdateText" Text="Güncellemeleri kontrol edebilirsin." Foreground="#9DB5B7" FontSize="10" TextWrapping="Wrap" Margin="0,9,0,9"/>
+                        <Button x:Name="UpdateButton" Content="GÜNCELLEMEYİ KONTROL ET" Click="UpdateButton_Click" Height="32" Cursor="Hand" FontSize="9" FontWeight="Bold" Foreground="#F4F5F6" Background="#24686E" BorderThickness="0">
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Template">
@@ -273,7 +277,6 @@
                                    TextTrimming="CharacterEllipsis" Margin="15,5,0,0"/>
                     </StackPanel>
                 </Border>
-                <TextBlock x:Name="VersionText" Text="VALOTOOLS" Foreground="#51535A" FontSize="9" Margin="10,16,0,0"/>
             </StackPanel>
         </Grid>
         <Border Grid.Column="1" Margin="0,10,10,10" Background="#040507" BorderBrush="#1C1D21" BorderThickness="1" CornerRadius="17" ClipToBounds="True">

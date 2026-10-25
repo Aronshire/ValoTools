@@ -4,14 +4,15 @@ VALORANT temalı, C#/.NET 10 WPF masaüstü araç uygulaması. İlk aracı, ajan
 
 Ajan listesi rol sekmeleriyle ve aramayla birlikte filtrelenir. Sol alttaki bağlantı kartı VALORANT oturumu algılandığında Riot adını ve etiketini gösterir. Uygulama logosunun düzenlenebilir kaynağı `assets/ValoTools.svg`, ikon dosyası `assets/ValoTools.ico` konumundadır.
 
-Arayüzde Elowell'deki Figtree metin fontu ve Barlow Condensed başlık fontu kullanılır. Fontlar uygulamaya gömülüdür; lisans metinleri `assets/fonts` altındadır.
+Arayüzde Figtree metin fontu ve Barlow Condensed başlık fontu kullanılır. Fontlar uygulamaya gömülüdür; lisans metinleri `assets/fonts` altındadır.
 
 ## Çalıştırma
 
 Windows ve .NET 10 SDK gerekir.
 
 ```powershell
-cd C:\Projects\ValoInsta
+git clone https://github.com/Aronshire/ValoTools.git
+cd ValoTools
 dotnet run --project ValoTools.csproj
 ```
 
@@ -21,9 +22,9 @@ Derlenmiş uygulama `dist\ValoTools.exe` konumundadır. Bu sürümün açılmas�
 
 ## Windows kurulumu
 
-`dist\ValoTools-Setup-1.2.1.exe` x64 Windows 10/11 için kurulum dosyasıdır. .NET 10 masaüstü çalışma zamanı pakete dahildir. Yönetici izni istemeden kullanıcı hesabına kurulur; Başlat menüsüne kısayol ekler, isteğe bağlı masaüstü kısayolu sunar ve Windows'un Uygulamalar bölümünden kaldırılabilir. Önceki ValoInsta kurulumunu aynı uygulama kimliğiyle günceller.
+`dist\ValoTools-Setup-1.2.2.exe` x64 Windows 10/11 için kurulum dosyasıdır. .NET 10 masaüstü çalışma zamanı pakete dahildir. Yönetici izni istemeden kullanıcı hesabına kurulur; Başlat menüsüne kısayol ekler, isteğe bağlı masaüstü kısayolu sunar ve Windows'un Uygulamalar bölümünden kaldırılabilir. Önceki ValoInsta kurulumunu aynı uygulama kimliğiyle günceller.
 
-Kurulu uygulama açılışta ve açık kaldığı sürece 30 dakikada bir [GitHub Releases](https://github.com/Aronshire/ValoTools/releases/latest) üzerinden yeni sürümü denetler. Yeni sürüm varsa `ValoTools-Setup-<sürüm>.exe` dosyasını arka planda indirir, GitHub'ın yayınladığı SHA-256 özetiyle doğrular ve sol tarafta **Güncellemeyi kur** düğmesini gösterir. Kurulum kullanıcı düğmeye bastığında başlar. Kaynak koddan çalıştırılan sürüm güncelleme denetimi yapmaz.
+Kurulu uygulama açılışta ve açık kaldığı sürece 30 dakikada bir [GitHub Releases](https://github.com/Aronshire/ValoTools/releases/latest) üzerinden yeni sürümü denetler. Sol tarafta mevcut sürüm ve **Güncellemeyi kontrol et** düğmesi de görünür. Yeni sürüm varsa `ValoTools-Setup-<sürüm>.exe` dosyasını arka planda indirir, GitHub'ın yayınladığı SHA-256 özetiyle doğrular ve **Güncellemeyi kur** düğmesini gösterir. Kurulum kullanıcı düğmeye bastığında başlar. Kaynak koddan çalıştırılan sürümde otomatik denetim yapılmaz; elle kontrol düğmesi kullanılabilir.
 
 Kurulum dosyasını yeniden oluşturmak için .NET 10 SDK ve Inno Setup 7 gerekir:
 
@@ -45,4 +46,4 @@ dotnet run --project tests\RegionResolverCheck\RegionResolverCheck.csproj
 dotnet run --project tests\UpdateCheck\UpdateCheck.csproj
 ```
 
-Bu uygulama resmî olmayan oyun istemcisi uç noktalarını kullanır. Gerçek ajan kilitleme akışı açık VALORANT oturumu ve maçla test edilmelidir. Kaynak `C:\Projects\Valorant.js` projesindeki lockfile, token ve pregame yöntemleri referans alınmıştır; o projedeki sabit istemci sürümüne bağımlı değildir.
+Bu uygulama resmî olmayan oyun istemcisi uç noktalarını kullanır. Gerçek ajan kilitleme akışı açık VALORANT oturumu ve maçla test edilmelidir. [Valorant.js](https://github.com/aronshire/Valorant.js) projesindeki lockfile, token ve pregame yöntemleri referans alınmıştır; o projedeki sabit istemci sürümüne bağımlı değildir.

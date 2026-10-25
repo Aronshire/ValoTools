@@ -8,14 +8,14 @@ static AvailableUpdate? Parse(string tag, string name, string url, string digest
         tag_name = tag,
         assets = new[] { new { name, state = "uploaded", size, digest, browser_download_url = url } }
     }));
-    return UpdateService.ParseLatestRelease(json.RootElement, new Version(1, 2, 1));
+    return UpdateService.ParseLatestRelease(json.RootElement, new Version(1, 2, 2));
 }
 
 const string hash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const string url = "https://github.com/Aronshire/ValoTools/releases/download/v1.3.0/ValoTools-Setup-1.3.0.exe";
 if (Parse("v1.3.0", "ValoTools-Setup-1.3.0.exe", url, hash)?.Version != new Version(1, 3, 0))
     throw new Exception("Yeni sürüm bulunamadı.");
-if (Parse("v1.2.1", "ValoTools-Setup-1.2.1.exe", url, hash) is not null)
+if (Parse("v1.2.2", "ValoTools-Setup-1.2.2.exe", url, hash) is not null)
     throw new Exception("Aynı sürüm güncelleme sayıldı.");
 if (Parse("v1.3.0", "ValoTools-Setup-1.3.0.exe", url.Replace("github.com", "example.com"), hash) is not null)
     throw new Exception("Yabancı indirme adresi kabul edildi.");

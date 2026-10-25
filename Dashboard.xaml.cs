@@ -58,7 +58,7 @@ public partial class Dashboard : Window
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         AnimateEntrance();
-        VersionText.Text = $"VALOTOOLS  /  v{UpdateService.CurrentVersion.ToString(3)}";
+        VersionText.Text = $"v{UpdateService.CurrentVersion.ToString(3)}";
         if (UpdateService.IsInstalled()) _ = WatchForUpdatesAsync();
         _ = WatchValorantPresenceAsync(_presenceCancellation.Token);
         await LoadAgentsAsync();
@@ -79,20 +79,23 @@ public partial class Dashboard : Window
     {
         if (_updateCheckRunning) return;
         _updateCheckRunning = true;
-        UpdateCard.Visibility = Visibility.Visible;
         UpdateText.Text = "Yeni sürüm denetleniyor...";
+        UpdateButton.Content = "KONTROL EDİLİYOR...";
         UpdateButton.IsEnabled = false;
         try
         {
             _availableUpdate = await _updates.CheckAsync(_updateCancellation.Token);
             if (_availableUpdate is null)
             {
-                UpdateCard.Visibility = Visibility.Collapsed;
+                UpdateText.Text = "En güncel sürümü kullanıyorsun.";
+                UpdateButton.Content = "GÜNCELLEMEYİ KONTROL ET";
+                UpdateButton.IsEnabled = true;
                 return;
             }
 
             var version = _availableUpdate.Version.ToString(3);
             UpdateText.Text = $"v{version} indiriliyor • %0";
+            UpdateButton.Content = "İNDİRİLİYOR...";
             var progress = new Progress<int>(percent =>
             {
                 if (!_updateCancellation.IsCancellationRequested)
@@ -100,6 +103,7 @@ public partial class Dashboard : Window
             });
             _installerPath = await _updates.DownloadAsync(_availableUpdate, progress, _updateCancellation.Token);
             UpdateText.Text = $"v{version} indirildi. Kuruluma hazır.";
+            UpdateButton.Content = "GÜNCELLEMEYİ KUR  ↗";
             UpdateButton.IsEnabled = true;
         }
         catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { }
