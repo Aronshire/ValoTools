@@ -1,0 +1,54 @@
+name: Publish Windows setup
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Verify version matches tag
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content ValoTools.csproj
+          $version = [string]$project.Project.PropertyGroup.Version
+          if ("v$version" -ne $env:GITHUB_REF_NAME) { throw "Tag and project version do not match." }
+
+      - name: Install Inno Setup 7
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'innosetup-7.1.0-x64.exe'
+          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe' -OutFile $installer
+          $signature = Get-AuthenticodeSignature $installer
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Pyrsys B.V.') {
+            throw 'Inno Setup installer signature is invalid.'
+          }
+          $process = Start-Process $installer -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru -WindowStyle Hidden
+          if ($process.ExitCode -ne 0) { throw "Inno Setup installation failed: $($process.ExitCode)" }
+
+      - name: Check update metadata
+        shell: pwsh
+        run: dotnet run --project tests/UpdateCheck/UpdateCheck.csproj
+
+      - name: Build setup
+        shell: pwsh
+        run: ./installer/build.ps1
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          [xml]$project = Get-Content ValoTools.csproj
+          $version = [string]$project.Project.PropertyGroup.Version
+          gh release create $env:GITHUB_REF_NAME "dist/ValoTools-Setup-$version.exe" --verify-tag --title "ValoTools $version" --generate-notes --latest

@@ -1,0 +1,13 @@
+.dotnet/
+bin/
+obj/
+dist/
+publish/
+**/bin/
+**/obj/
+.vs/
+.tools/
+*.user
+*.log
+.env
+.env.*
