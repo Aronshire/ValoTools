@@ -7,6 +7,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <Version>1.2.2</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>ValoTools</Product>
+    <Company>Aronshire</Company>
+    <Description>VALORANT agent selection desktop tool</Description>
     <ApplicationIcon>assets\ValoTools.ico</ApplicationIcon>
   </PropertyGroup>
 

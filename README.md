@@ -34,6 +34,8 @@ Kurulum dosyasını yeniden oluşturmak için .NET 10 SDK ve Inno Setup 7 gereki
 
 Kurulum tarifi `installer/ValoTools.iss` dosyasındadır. Dağıtım için kod imzalama sertifikası kullanılmadığından Windows yayıncıyı doğrulayamaz.
 
+Mevcut kurulumun imza durumu ve planlanan süreç [Code signing policy](CODE_SIGNING_POLICY.md) belgesinde; uygulamanın kullandığı yerel veriler ve ağ bağlantıları [gizlilik politikasında](PRIVACY.md) açıklanır.
+
 ## Yeni sürüm yayımlama
 
 `ValoTools.csproj` içindeki `Version` ile `installer/ValoTools.iss` içindeki `AppVersion` aynı olmalıdır. Değişiklikleri GitHub'a gönderin, sonra aynı commit için `vX.Y.Z` etiketini gönderin. `.github/workflows/release.yml` Windows kurulumunu derleyip GitHub Release ve kurulum varlığını otomatik yayımlar. Kurulu istemciler bir sonraki açılışta sürümü otomatik indirir. İsterseniz aynı kurulumu yerelde `./installer/build.ps1` ile oluşturabilirsiniz.

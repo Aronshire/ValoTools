@@ -7,6 +7,7 @@ AppId={{A79A221F-41E8-4EE9-9B2F-B9E4524B381E}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
+AppPublisher=Aronshire
 DefaultDirName={localappdata}\Programs\{#AppName}
 UsePreviousAppDir=yes
 DefaultGroupName={#AppName}
