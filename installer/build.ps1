@@ -8,7 +8,8 @@ try {
     [xml]$project = Get-Content (Join-Path $projectRoot 'ValoTools.csproj')
     $projectVersion = [string]$project.Project.PropertyGroup.Version
     $installerSource = Get-Content (Join-Path $PSScriptRoot 'ValoTools.iss') -Raw
-    if ($installerSource -notmatch '(?m)^#define AppVersion "([^"]+)"$' -or $Matches[1] -ne $projectVersion) {
+    $versionMatch = [regex]::Match($installerSource, '(?m)^#define AppVersion "([^"]+)"\r?$')
+    if (-not $versionMatch.Success -or $versionMatch.Groups[1].Value -ne $projectVersion) {
         throw 'Proje ve kurulum sürüm numaraları eşleşmiyor.'
     }
 

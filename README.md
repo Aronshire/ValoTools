@@ -21,7 +21,7 @@ Derlenmiş uygulama `dist\ValoTools.exe` konumundadır. Bu sürümün açılmas�
 
 ## Windows kurulumu
 
-`dist\ValoTools-Setup-1.2.0.exe` x64 Windows 10/11 için kurulum dosyasıdır. .NET 10 masaüstü çalışma zamanı pakete dahildir. Yönetici izni istemeden kullanıcı hesabına kurulur; Başlat menüsüne kısayol ekler, isteğe bağlı masaüstü kısayolu sunar ve Windows'un Uygulamalar bölümünden kaldırılabilir. Önceki ValoInsta kurulumunu aynı uygulama kimliğiyle günceller.
+`dist\ValoTools-Setup-1.2.1.exe` x64 Windows 10/11 için kurulum dosyasıdır. .NET 10 masaüstü çalışma zamanı pakete dahildir. Yönetici izni istemeden kullanıcı hesabına kurulur; Başlat menüsüne kısayol ekler, isteğe bağlı masaüstü kısayolu sunar ve Windows'un Uygulamalar bölümünden kaldırılabilir. Önceki ValoInsta kurulumunu aynı uygulama kimliğiyle günceller.
 
 Kurulu uygulama açılışta ve açık kaldığı sürece 30 dakikada bir [GitHub Releases](https://github.com/Aronshire/ValoTools/releases/latest) üzerinden yeni sürümü denetler. Yeni sürüm varsa `ValoTools-Setup-<sürüm>.exe` dosyasını arka planda indirir, GitHub'ın yayınladığı SHA-256 özetiyle doğrular ve sol tarafta **Güncellemeyi kur** düğmesini gösterir. Kurulum kullanıcı düğmeye bastığında başlar. Kaynak koddan çalıştırılan sürüm güncelleme denetimi yapmaz.
 
