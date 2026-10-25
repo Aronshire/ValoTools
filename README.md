@@ -47,3 +47,7 @@ dotnet run --project tests\UpdateCheck\UpdateCheck.csproj
 ```
 
 Bu uygulama resmî olmayan oyun istemcisi uç noktalarını kullanır. Gerçek ajan kilitleme akışı açık VALORANT oturumu ve maçla test edilmelidir. [Valorant.js](https://github.com/aronshire/Valorant.js) projesindeki lockfile, token ve pregame yöntemleri referans alınmıştır; o projedeki sabit istemci sürümüne bağımlı değildir.
+
+## Lisans
+
+ValoTools kaynak kodu [MIT Lisansı](LICENSE) ile yayımlanır. Uygulamaya gömülü Figtree ve Barlow Condensed fontları kendi SIL Open Font License 1.1 lisanslarına tabidir; metinleri `assets/fonts` klasöründedir.
