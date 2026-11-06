@@ -6,6 +6,8 @@ ValoTools, C# ve .NET 10 WPF ile geliştirilmiş VALORANT temalı bir masaüstü
 
 Ajanları role göre filtreleyebilir veya isme göre arayabilirsiniz. Sol alttaki bağlantı kartı, VALORANT oturumu algılandığında Riot adınızı ve etiketinizi gösterir. Düzenlenebilir logo kaynağı `assets/ValoTools.svg`, uygulama ikonu `assets/ValoTools.ico` konumundadır.
 
+**Oyuncu Skinleri** sayfası, devam eden maçtaki oyuncuları BLUE ve RED takımlarına göre listeler. Bu sayfa açıldığında ve maç değiştiğinde oyuncu adlarını, ajanları, silah skinlerini ve buddy'leri yükler; maç kimliğini 10 saniyede bir kontrol eder.
+
 Arayüzde gövde metinleri için Figtree, başlıklar için Barlow Condensed kullanılır. İki font da uygulamaya gömülüdür; lisans metinleri `assets/fonts` klasöründedir.
 
 ## Kaynak koddan çalıştırma
@@ -20,11 +22,11 @@ dotnet run --project ValoTools.csproj
 
 Bir ajan seçip **İzlemeyi Başlat** düğmesine basın. Bölgeyi elle seçmeniz gerekmez. Uygulama önce VALORANT oturumunun GLZ adresini, ardından Riot Client bölge bilgisini, son olarak güncel ShooterGame günlüğünü kontrol eder. Bölge güvenilir biçimde belirlenemezse varsayılan bir bölge seçmek yerine hata gösterir.
 
-Derlenmiş uygulama `dist\ValoTools.exe` konumundadır. Bu sürümün açılması için bilgisayarda .NET 10 Desktop Runtime bulunmalıdır; `dist` klasöründeki diğer dosyaları da yanında tutun. ValoTools, eski ValoInsta ayarlarını ilk açılışta okur.
+`./installer/build.ps1` çalıştırıldığında küçük, .NET çalışma ortamını sistemden kullanan uygulama `dist\ValoTools-1.2.4` klasörüne, kurulum dosyası da yanına oluşturulur. Taşınabilir uygulama için .NET 10 Desktop Runtime gerekir; kurulum dosyası bu çalışma ortamını içerir. ValoTools, eski ValoInsta ayarlarını ilk açılışta okur.
 
 ## Windows kurulumu
 
-`dist\ValoTools-Setup-1.2.2.exe`, x64 Windows 10/11 için kurulum dosyasıdır. .NET 10 Desktop Runtime pakete dahildir. Yönetici izni istemeden mevcut kullanıcı hesabına kurulur, Başlat menüsüne kısayol ekler, isteğe bağlı masaüstü kısayolu sunar ve Windows'un Uygulamalar bölümünden kaldırılabilir. Aynı uygulama kimliğini kullanarak eski ValoInsta kurulumunu da günceller.
+`dist\ValoTools-Setup-1.2.4.exe`, x64 Windows 10/11 için kurulum dosyasıdır. .NET 10 Desktop Runtime pakete dahildir. Yönetici izni istemeden mevcut kullanıcı hesabına kurulur, Başlat menüsüne kısayol ekler, isteğe bağlı masaüstü kısayolu sunar ve Windows'un Uygulamalar bölümünden kaldırılabilir. Aynı uygulama kimliğini kullanarak eski ValoInsta kurulumunu da günceller.
 
 Kurulu uygulama açılışta ve açık kaldığı sürece 30 dakikada bir [GitHub Releases](https://github.com/Aronshire/ValoTools/releases/latest) üzerinden güncellemeleri denetler. Yan menüde mevcut sürüm ve **Güncellemeyi kontrol et** düğmesi görünür. Yeni sürüm varsa `ValoTools-Setup-<sürüm>.exe` dosyasını arka planda indirir, GitHub'ın yayımladığı SHA-256 özetiyle doğrular ve **Güncellemeyi kur** düğmesini gösterir. Kurulum bu düğmeye bastığınızda başlar. Kaynak koddan çalıştırılan sürüm otomatik denetim yapmaz; elle kontrol düğmesini kullanabilirsiniz.
 

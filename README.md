@@ -6,6 +6,8 @@ ValoTools is a VALORANT-themed desktop app built with C# and .NET 10 WPF. It loa
 
 You can filter agents by role or search by name. The connection card in the lower-left corner displays your Riot name and tag when it detects a VALORANT session. The editable logo source is at `assets/ValoTools.svg`, and the app icon is at `assets/ValoTools.ico`.
 
+The **Oyuncu Skinleri** page lists players in the current match by BLUE and RED team. It checks the current match ID every 10 seconds and loads player names, agents, weapon skins, and buddies when you open the page or when the match changes.
+
 The interface uses Figtree for body text and Barlow Condensed for headings. Both fonts are bundled with the app; their license texts are in `assets/fonts`.
 
 ## Run from source
@@ -20,11 +22,11 @@ dotnet run --project ValoTools.csproj
 
 Select an agent and click **İZLEMEYİ BAŞLAT** (Start Monitoring). The app's button labels are currently in Turkish. There is no manual region selector. The app checks the VALORANT session's GLZ address first, Riot Client region data next, and the current ShooterGame log last. If it cannot determine the region reliably, it displays an error instead of silently choosing a default.
 
-The built app is at `dist\ValoTools.exe`. It requires the .NET 10 Desktop Runtime on the computer; keep the other files in `dist` alongside it. On first launch, ValoTools reads existing settings from an older ValoInsta installation.
+Running `./installer/build.ps1` creates a small framework-dependent app in `dist\ValoTools-1.2.4` and the installer beside it. The portable app requires the .NET 10 Desktop Runtime; the installer includes that runtime. On first launch, ValoTools reads existing settings from an older ValoInsta installation.
 
 ## Windows installer
 
-`dist\ValoTools-Setup-1.2.2.exe` installs ValoTools on x64 Windows 10/11. It includes the .NET 10 Desktop Runtime, installs for the current user without administrator privileges, adds a Start menu shortcut, offers an optional desktop shortcut, and can be removed through Windows Apps settings. It also upgrades an older ValoInsta installation using the same app ID.
+`dist\ValoTools-Setup-1.2.4.exe` installs ValoTools on x64 Windows 10/11. It includes the .NET 10 Desktop Runtime, installs for the current user without administrator privileges, adds a Start menu shortcut, offers an optional desktop shortcut, and can be removed through Windows Apps settings. It also upgrades an older ValoInsta installation using the same app ID.
 
 The installed app checks [GitHub Releases](https://github.com/Aronshire/ValoTools/releases/latest) for updates at startup and every 30 minutes while running. The sidebar shows the current version and a **GÜNCELLEMEYİ KONTROL ET** (Check for updates) button. When a new version is available, the app downloads `ValoTools-Setup-<version>.exe` in the background, verifies it against the SHA-256 digest published by GitHub, and shows a **GÜNCELLEMEYİ KUR** (Install update) button. Installation starts when you click that button. Builds run from source do not check automatically, but you can use the manual button.
 

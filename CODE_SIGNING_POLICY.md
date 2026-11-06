@@ -2,7 +2,7 @@
 
 ## Current status
 
-ValoTools 1.2.2 and earlier Windows installers are **unsigned**. The project is seeking a trusted code signing route; a release must not be described as signed until its Authenticode signature has been verified. Adding the MIT license does not sign existing files.
+ValoTools 1.2.4 and earlier Windows installers are **unsigned**. The project is seeking a trusted code signing route; a release must not be described as signed until its Authenticode signature has been verified. Adding the MIT license does not sign existing files.
 
 ## Intended release procedure
 

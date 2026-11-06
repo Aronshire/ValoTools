@@ -18,6 +18,20 @@ try {
         -o publish\ValoTools\win-x64
     if ($LASTEXITCODE -ne 0) { throw 'ValoTools yayını başarısız oldu.' }
 
+    $appDistribution = Join-Path $projectRoot "dist\ValoTools-$projectVersion"
+    if (Test-Path -LiteralPath $appDistribution) {
+        $distRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot 'dist')).TrimEnd('\') + '\'
+        $appDistributionFullPath = [System.IO.Path]::GetFullPath($appDistribution)
+        if (-not $appDistributionFullPath.StartsWith($distRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Taşınabilir uygulama yolu dist klasörünün dışında.'
+        }
+        Remove-Item -LiteralPath $appDistributionFullPath -Recurse -Force
+    }
+    dotnet publish ValoTools.csproj -c Release -r win-x64 --self-contained false `
+        -p:PublishSingleFile=false -p:DebugType=None -p:DebugSymbols=false `
+        -o $appDistribution
+    if ($LASTEXITCODE -ne 0) { throw 'Taşınabilir ValoTools yayını başarısız oldu.' }
+
     $compilerCandidates = @(
         (Join-Path $projectRoot '.tools\InnoSetup\ISCC.exe'),
         (Join-Path ${env:ProgramFiles} 'Inno Setup 7\ISCC.exe'),

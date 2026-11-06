@@ -70,6 +70,10 @@
             <Setter Property="RenderTransform"><Setter.Value><ScaleTransform ScaleX="1" ScaleY="1"/></Setter.Value></Setter>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate></Setter.Value></Setter>
             <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.52"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
                 <EventTrigger RoutedEvent="MouseEnter">
                     <BeginStoryboard>
                         <Storyboard>
@@ -217,7 +221,7 @@
         <Grid.RenderTransform><TranslateTransform Y="18"/></Grid.RenderTransform>
         <Grid.ColumnDefinitions><ColumnDefinition Width="205"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Grid Grid.Column="0" Margin="18,22,14,20">
-            <Grid.RowDefinitions><RowDefinition Height="62"/><RowDefinition Height="1"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="62"/><RowDefinition Height="1"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
                 <Image Source="assets/ValoTools.png" Width="35" Height="35" Margin="0,0,10,0"/>
                 <StackPanel VerticalAlignment="Center">
@@ -227,16 +231,19 @@
             </StackPanel>
             <Border Grid.Row="1" Background="#292B30"/>
             <TextBlock Grid.Row="2" Text="KONTROL" FontSize="10" FontWeight="SemiBold" Foreground="#696C74" Margin="12,26,0,12"/>
-            <Border Grid.Row="3" Background="#142629" BorderBrush="#235E64" BorderThickness="1" CornerRadius="11" Height="48">
-                <Grid>
-                    <Border Width="3" Background="{StaticResource Accent}" HorizontalAlignment="Left" CornerRadius="2" Margin="0,11,0,11"/>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
-                        <TextBlock Text="◈" Foreground="{StaticResource Accent}" FontSize="18" Margin="0,0,10,0"/>
-                        <TextBlock Text="Ajan seçimi" Foreground="#F4F5F6" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-            <StackPanel Grid.Row="5">
+            <Button x:Name="AgentNavButton" Grid.Row="3" Height="46" Margin="0,0,0,6" Click="ShowAgentsPage_Click" Background="#142629" BorderBrush="#235E64" BorderThickness="1" Cursor="Hand">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="11,0,0,0">
+                    <TextBlock Text="◈" Foreground="{StaticResource Accent}" FontSize="17" Margin="0,0,9,0"/>
+                    <TextBlock Text="Ajan seçimi" Foreground="#F4F5F6" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Button x:Name="MatchLoadoutsNavButton" Grid.Row="4" Height="46" Click="ShowLoadoutsPage_Click" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" Cursor="Hand">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="11,0,0,0">
+                    <TextBlock Text="▤" Foreground="#8A9196" FontSize="16" Margin="0,0,10,0"/>
+                    <TextBlock Text="Oyuncu Skinleri" Foreground="#A8ADB3" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <StackPanel Grid.Row="6">
                 <Border x:Name="UpdateCard" Background="#142124" BorderBrush="#28666B" BorderThickness="1" CornerRadius="13" Padding="13,11" Margin="0,0,0,10">
                     <StackPanel>
                         <Grid>
@@ -279,7 +286,7 @@
                 </Border>
             </StackPanel>
         </Grid>
-        <Border Grid.Column="1" Margin="0,10,10,10" Background="#040507" BorderBrush="#1C1D21" BorderThickness="1" CornerRadius="17" ClipToBounds="True">
+        <Border x:Name="AgentsPage" Grid.Column="1" Margin="0,10,10,10" Background="#040507" BorderBrush="#1C1D21" BorderThickness="1" CornerRadius="17" ClipToBounds="True">
         <Grid>
         <Grid.RowDefinitions><RowDefinition Height="1"/><RowDefinition Height="88"/><RowDefinition Height="*"/><RowDefinition Height="96"/></Grid.RowDefinitions>
         <Border Grid.Row="0" Background="#25262B"/>
@@ -378,13 +385,31 @@
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Style="{StaticResource AgentButton}" Click="Agent_Click" Tag="{Binding}" Margin="0,0,11,11">
+                                    <Button Style="{StaticResource AgentButton}" Click="Agent_Click" Tag="{Binding}" IsEnabled="{Binding IsOwned}" Margin="0,0,11,11">
                                         <Border Style="{StaticResource Card}" Width="110" Height="124">
-                                            <StackPanel Margin="6,7">
-                                                <Image Source="{Binding IconUrl}" Width="77" Height="72" Stretch="Uniform"/>
-                                                <TextBlock Text="{Binding Name}" Foreground="#F4F5F6" FontWeight="Bold" FontSize="12" TextAlignment="Center" Margin="0,6,0,0"/>
-                                                <TextBlock Text="{Binding Role}" Foreground="{StaticResource Muted}" FontSize="9" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                            </StackPanel>
+                                            <Grid Margin="6,7">
+                                                <StackPanel>
+                                                    <Image Source="{Binding IconUrl}" Width="77" Height="72" Stretch="Uniform"/>
+                                                    <TextBlock Text="{Binding Name}" Foreground="#F4F5F6" FontWeight="Bold" FontSize="12" TextAlignment="Center" Margin="0,6,0,0"/>
+                                                    <TextBlock Text="{Binding Role}" Foreground="{StaticResource Muted}" FontSize="9" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                                <Border Background="#D90A0B0E" CornerRadius="8">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsOwned}" Value="False">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                        <TextBlock Text="🔒" FontSize="18" TextAlignment="Center"/>
+                                                        <TextBlock Text="KİLİTLİ" Foreground="#D4D5D8" FontSize="9" FontWeight="Bold" Margin="0,4,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
                                         </Border>
                                     </Button>
                                 </DataTemplate>
@@ -414,6 +439,92 @@
             </Grid>
         </Border>
         </Grid>
+        </Border>
+        <Border x:Name="LoadoutsPage" Grid.Column="1" Margin="0,10,10,10" Background="#040507" BorderBrush="#1C1D21" BorderThickness="1" CornerRadius="17" ClipToBounds="True" Visibility="Collapsed">
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="1"/><RowDefinition Height="88"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Border Grid.Row="0" Background="#25262B"/>
+                <Grid Grid.Row="1" Margin="32,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="VALOTOOLS  /  OYUNCU SKİNLERİ" Foreground="{StaticResource Muted}" FontSize="10" FontWeight="SemiBold"/>
+                        <TextBlock Text="Oyuncu Skinleri" Foreground="#F4F5F6" FontFamily="./assets/fonts/#Barlow" FontStretch="Condensed" FontSize="32" FontWeight="Bold" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Background="#14161A" BorderBrush="#303238" BorderThickness="1" CornerRadius="18" Padding="14,8" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource Accent}" Margin="0,0,9,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="LoadoutStatusText" Text="Önce maçınızın başlamasını bekleyin." Foreground="#C9D2D5" FontSize="10" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                <Grid Grid.Row="2" Margin="32,8,32,22">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="320"/><ColumnDefinition Width="22"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" CornerRadius="15" BorderBrush="#2C3035" BorderThickness="1" ClipToBounds="True">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#14191C" Offset="0"/><GradientStop Color="#0F1116" Offset="0.62"/><GradientStop Color="#102024" Offset="1"/></LinearGradientBrush>
+                        </Border.Background>
+                        <Grid Margin="18">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <TextBlock Text="MAÇTAKİ OYUNCULAR" Foreground="{StaticResource Muted}" FontSize="10" FontWeight="SemiBold" Margin="2,2,0,13"/>
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <Border Background="#14232A" BorderBrush="#28434D" BorderThickness="1" CornerRadius="9" Padding="10,7" Margin="0,0,0,8">
+                                        <TextBlock Text="BLUE TEAM" Foreground="#7EC8E8" FontSize="10" FontWeight="Bold"/>
+                                    </Border>
+                                    <ItemsControl x:Name="BluePlayerItems">
+                                        <ItemsControl.ItemTemplate><DataTemplate>
+                                            <Button Click="LivePlayer_Click" Tag="{Binding}" Background="#151B20" Foreground="#F4F5F6" BorderBrush="#28343B" BorderThickness="1" Padding="10,8" Margin="0,0,0,6" HorizontalContentAlignment="Left">
+                                                <StackPanel><TextBlock Text="{Binding DisplayName}" FontSize="11" FontWeight="SemiBold"/><TextBlock Text="{Binding AgentName}" Foreground="{StaticResource Muted}" FontSize="9" Margin="0,2,0,0"/></StackPanel>
+                                            </Button>
+                                        </DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Border Background="#25191C" BorderBrush="#493034" BorderThickness="1" CornerRadius="9" Padding="10,7" Margin="0,10,0,8">
+                                        <TextBlock Text="RED TEAM" Foreground="#EB8888" FontSize="10" FontWeight="Bold"/>
+                                    </Border>
+                                    <ItemsControl x:Name="RedPlayerItems">
+                                        <ItemsControl.ItemTemplate><DataTemplate>
+                                            <Button Click="LivePlayer_Click" Tag="{Binding}" Background="#1D171A" Foreground="#F4F5F6" BorderBrush="#3B292D" BorderThickness="1" Padding="10,8" Margin="0,0,0,6" HorizontalContentAlignment="Left">
+                                                <StackPanel><TextBlock Text="{Binding DisplayName}" FontSize="11" FontWeight="SemiBold"/><TextBlock Text="{Binding AgentName}" Foreground="{StaticResource Muted}" FontSize="9" Margin="0,2,0,0"/></StackPanel>
+                                            </Button>
+                                        </DataTemplate></ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Column="2" Background="#0F1015" BorderBrush="#25262B" BorderThickness="1" CornerRadius="14" Padding="18">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <StackPanel Margin="4,0,0,12">
+                                <TextBlock Text="OYUNCU LOADOUT'U" Foreground="{StaticResource Muted}" FontSize="10" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="SelectedLivePlayerText" Text="Oyuncu seç" Foreground="#F4F5F6" FontFamily="./assets/fonts/#Barlow" FontStretch="Condensed" FontSize="26" FontWeight="Bold" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl x:Name="WeaponLoadoutItems">
+                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                        <Border Background="#15171C" BorderBrush="#292C33" BorderThickness="1" CornerRadius="11" Padding="14" Margin="0,0,0,9">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <Image Source="{Binding SkinImage}" Width="138" Height="78" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Weapon}" Foreground="#F4F5F6" FontSize="13" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding Skin}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                        <Border Width="30" Height="30" Background="#202329" CornerRadius="6" Margin="0,0,8,0">
+                                                            <Image Source="{Binding BuddyImage}" Width="25" Height="25" Stretch="Uniform"/>
+                                                        </Border>
+                                                        <TextBlock Text="{Binding Buddy}" Foreground="#AEB9BD" FontSize="10" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
         </Border>
     </Grid>
 </Window>

@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -48,6 +50,13 @@ public partial class Dashboard : Window
     private AvailableUpdate? _availableUpdate;
     private string? _installerPath;
     private bool _updateCheckRunning;
+    private bool _ownershipCheckRunning;
+    private string? _ownershipLoadedPlayerId;
+    private string? _lastPresenceName;
+    private DateTime _nextOwnershipCheckUtc;
+    private CancellationTokenSource? _liveLoadoutsCancellation;
+    private string? _currentLiveMatchId;
+    private List<LivePlayerLoadout> _livePlayers = [];
 
     public Dashboard()
     {
@@ -155,12 +164,19 @@ public partial class Dashboard : Window
     {
         try
         {
+            var previousOwnership = _allAgents.ToDictionary(agent => agent.Id, agent => agent.IsOwned,
+                StringComparer.OrdinalIgnoreCase);
             _allAgents = await _catalog.GetAgentsAsync();
+            foreach (var agent in _allAgents)
+                if (previousOwnership.TryGetValue(agent.Id, out var isOwned)) agent.IsOwned = isOwned;
+            _ownershipLoadedPlayerId = null;
             AgentCount.Text = $"{_allAgents.Count} AJAN";
             RefreshAgents();
             var saved = _selectedAgent?.Id ?? SettingsStore.LoadAgentId();
             SelectAgent(_allAgents.FirstOrDefault(a => a.Id == saved));
-            StartButton.IsEnabled = _selectedAgent is not null;
+            if (_selectedAgent is { IsOwned: false })
+                SelectAgent(_allAgents.FirstOrDefault(a => a.IsOwned));
+            StartButton.IsEnabled = _selectedAgent is { IsOwned: true };
             DetailText.Text = "Ajanını seç ve izlemeyi başlat. Bölge otomatik algılanır.";
             SetStatus("HAZIR", "#36B7C1");
         }
@@ -208,7 +224,7 @@ public partial class Dashboard : Window
 
     private void Agent_Click(object sender, RoutedEventArgs e)
     {
-        if (_monitorCancellation is null && sender is Button { Tag: Agent agent }) SelectAgent(agent);
+        if (_monitorCancellation is null && sender is Button { Tag: Agent { IsOwned: true } agent }) SelectAgent(agent);
     }
 
     private void SelectAgent(Agent? agent)
@@ -284,13 +300,33 @@ public partial class Dashboard : Window
 
     private async Task WatchValorantPresenceAsync(CancellationToken cancellationToken)
     {
+        var pollDelaySeconds = 1;
         while (!cancellationToken.IsCancellationRequested)
         {
+            var presenceDetected = false;
             try
             {
                 var presence = await _riot.GetValorantPresenceAsync(cancellationToken);
                 if (!cancellationToken.IsCancellationRequested)
+                {
+                    presenceDetected = presence is not null;
+                    var displayName = presence?.DisplayName;
+                    if (presence is null)
+                    {
+                        _lastPresenceName = null;
+                        _ownershipLoadedPlayerId = null;
+                        _nextOwnershipCheckUtc = DateTime.MinValue;
+                    }
+                    if (presence is not null && _lastPresenceName is not null &&
+                        !string.Equals(_lastPresenceName, displayName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _ownershipLoadedPlayerId = null;
+                        _nextOwnershipCheckUtc = DateTime.MinValue;
+                    }
+                    if (presence is not null) _lastPresenceName = displayName;
                     ShowValorantPresence(presence);
+                    if (presence is not null) _ = RefreshOwnedAgentsAsync(cancellationToken);
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
             catch
@@ -299,9 +335,151 @@ public partial class Dashboard : Window
                     ShowValorantPresence(null);
             }
 
-            try { await Task.Delay(TimeSpan.FromSeconds(4), cancellationToken); }
+            pollDelaySeconds = presenceDetected ? 8 : Math.Min(pollDelaySeconds * 2, 8);
+            try { await Task.Delay(TimeSpan.FromSeconds(pollDelaySeconds), cancellationToken); }
             catch (OperationCanceledException) { break; }
         }
+    }
+
+    private void ShowAgentsPage_Click(object sender, RoutedEventArgs e)
+    {
+        _liveLoadoutsCancellation?.Cancel();
+        _liveLoadoutsCancellation?.Dispose();
+        _liveLoadoutsCancellation = null;
+        AgentsPage.Visibility = Visibility.Visible;
+        LoadoutsPage.Visibility = Visibility.Collapsed;
+        AgentNavButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#142629"));
+        AgentNavButton.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#235E64"));
+        MatchLoadoutsNavButton.Background = Brushes.Transparent;
+        MatchLoadoutsNavButton.BorderBrush = Brushes.Transparent;
+    }
+
+    private void ShowLoadoutsPage_Click(object sender, RoutedEventArgs e)
+    {
+        AgentsPage.Visibility = Visibility.Collapsed;
+        LoadoutsPage.Visibility = Visibility.Visible;
+        AgentNavButton.Background = Brushes.Transparent;
+        AgentNavButton.BorderBrush = Brushes.Transparent;
+        MatchLoadoutsNavButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#142629"));
+        MatchLoadoutsNavButton.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#235E64"));
+        _liveLoadoutsCancellation?.Cancel();
+        _liveLoadoutsCancellation?.Dispose();
+        _liveLoadoutsCancellation = new CancellationTokenSource();
+        _ = WatchLiveLoadoutsAsync(_liveLoadoutsCancellation.Token);
+    }
+
+    private async Task WatchLiveLoadoutsAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                var context = await _riot.GetContextAsync(cancellationToken);
+                var matchId = context is null ? null : await _riot.GetCurrentGameMatchIdAsync(context, cancellationToken);
+                if (string.IsNullOrWhiteSpace(matchId))
+                {
+                    _currentLiveMatchId = null;
+                    _livePlayers = [];
+                    BluePlayerItems.ItemsSource = null;
+                    RedPlayerItems.ItemsSource = null;
+                    WeaponLoadoutItems.ItemsSource = null;
+                    LoadoutStatusText.Text = "Önce maçınızın başlamasını bekleyin.";
+                }
+                else if (!string.Equals(matchId, _currentLiveMatchId, StringComparison.OrdinalIgnoreCase))
+                {
+                    LoadoutStatusText.Text = "Maç bulundu, oyuncu loadoutları yükleniyor...";
+                    var players = await _riot.GetLivePlayerLoadoutsAsync(context!, matchId, cancellationToken);
+                    if (players is { Count: > 0 })
+                    {
+                        Dictionary<string, (string GameName, string TagLine)> names;
+                        try { names = await _riot.GetPlayerNamesAsync(context!, players.Select(player => player.PlayerId).ToArray(), cancellationToken); }
+                        catch { names = new(StringComparer.OrdinalIgnoreCase); }
+                        _currentLiveMatchId = matchId;
+                        _livePlayers = players.Select(player =>
+                        {
+                            var name = names.GetValueOrDefault(player.PlayerId, (GameName: "", TagLine: ""));
+                            var agentName = _allAgents.FirstOrDefault(agent =>
+                                string.Equals(agent.Id, player.AgentId, StringComparison.OrdinalIgnoreCase))?.Name ?? "Unknown agent";
+                            return player with { GameName = name.GameName, TagLine = name.TagLine, AgentName = agentName };
+                        }).ToList();
+                        BluePlayerItems.ItemsSource = _livePlayers.Where(player => player.Team.Equals("Blue", StringComparison.OrdinalIgnoreCase)).ToList();
+                        RedPlayerItems.ItemsSource = _livePlayers.Where(player => player.Team.Equals("Red", StringComparison.OrdinalIgnoreCase)).ToList();
+                        var selectedPlayer = _livePlayers.FirstOrDefault(player =>
+                            string.Equals(player.PlayerId, context!.PlayerId, StringComparison.OrdinalIgnoreCase)) ?? _livePlayers[0];
+                        await DisplayLivePlayerAsync(selectedPlayer);
+                        LoadoutStatusText.Text = $"Maç bulundu • {_livePlayers.Count} oyuncu • Loadoutlar güncel";
+                    }
+                    else LoadoutStatusText.Text = "Maç bulundu, loadout verisi henüz hazır değil. 10 saniye içinde tekrar denenecek.";
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
+            catch (HttpRequestException ex)
+            {
+                LoadoutStatusText.Text = $"Maç verisi alınamadı: HTTP {(int?)ex.StatusCode ?? 0}. Tekrar deneniyor.";
+            }
+            catch (Exception ex)
+            {
+                LoadoutStatusText.Text = $"Maç verisi alınamadı: {ex.Message}";
+            }
+
+            try { await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken); }
+            catch (OperationCanceledException) { break; }
+        }
+    }
+
+    private async void LivePlayer_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: LivePlayerLoadout player }) return;
+        await DisplayLivePlayerAsync(player);
+    }
+
+    private async Task DisplayLivePlayerAsync(LivePlayerLoadout player)
+    {
+        SelectedLivePlayerText.Text = $"{player.DisplayName}  •  {player.AgentName}";
+        try
+        {
+            WeaponLoadoutItems.ItemsSource = await LiveLoadoutCatalog.DescribeAsync(player);
+        }
+        catch (Exception)
+        {
+            WeaponLoadoutItems.ItemsSource = new[] { new WeaponSkinLine("Loadout verisi çözümlenemedi", "", null, "", null) };
+        }
+    }
+
+    private async Task RefreshOwnedAgentsAsync(CancellationToken cancellationToken)
+    {
+        if (_allAgents.Count == 0 || _ownershipCheckRunning || DateTime.UtcNow < _nextOwnershipCheckUtc) return;
+        _ownershipCheckRunning = true;
+        try
+        {
+            var context = await _riot.GetContextAsync(cancellationToken);
+            if (context is null || context.PlayerId == _ownershipLoadedPlayerId) return;
+
+            var ownedIds = await _riot.GetOwnedAgentIdsAsync(context, cancellationToken);
+            foreach (var agent in _allAgents) agent.IsOwned = ownedIds.Contains(agent.Id);
+            _ownershipLoadedPlayerId = context.PlayerId;
+            _nextOwnershipCheckUtc = DateTime.MinValue;
+            if (_selectedAgent is { IsOwned: false })
+                SelectAgent(_allAgents.FirstOrDefault(a => a.IsOwned));
+            StartButton.IsEnabled = _selectedAgent is { IsOwned: true };
+            DetailText.Text = $"Sahip olunan ajanlar yüklendi: {ownedIds.Count} / {_allAgents.Count}.";
+            SetStatus("AJANLAR YÜKLENDİ", "#36B7C1");
+            RefreshAgents();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            _nextOwnershipCheckUtc = DateTime.UtcNow.AddSeconds(30);
+            var cause = ex switch
+            {
+                HttpRequestException { StatusCode: { } statusCode } =>
+                    $"HTTP {(int)statusCode} {statusCode}",
+                JsonException => "API yanıtı beklenen biçimde değil",
+                _ => ex.Message
+            };
+            DetailText.Text = $"Ajan sahipliği okunamadı ({cause}). 30 sn sonra tekrar denenecek.";
+        }
+        finally { _ownershipCheckRunning = false; }
     }
 
     private void ShowValorantPresence(ValorantPresence? presence)
@@ -402,5 +580,6 @@ public partial class Dashboard : Window
         _monitorCancellation?.Cancel();
         _presenceCancellation.Cancel();
         _updateCancellation.Cancel();
+        _liveLoadoutsCancellation?.Cancel();
     }
 }

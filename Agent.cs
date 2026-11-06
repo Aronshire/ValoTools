@@ -6,6 +6,7 @@ namespace ValoTools;
 public sealed class Agent : INotifyPropertyChanged
 {
     private bool _isSelected;
+    private bool _isOwned = true;
 
     public required string Id { get; init; }
     public required string Name { get; init; }
@@ -18,6 +19,12 @@ public sealed class Agent : INotifyPropertyChanged
     {
         get => _isSelected;
         set { if (_isSelected != value) { _isSelected = value; OnPropertyChanged(); } }
+    }
+
+    public bool IsOwned
+    {
+        get => _isOwned;
+        set { if (_isOwned != value) { _isOwned = value; OnPropertyChanged(); } }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

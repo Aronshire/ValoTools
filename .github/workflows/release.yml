@@ -36,13 +36,31 @@ jobs:
           $process = Start-Process $installer -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru -WindowStyle Hidden
           if ($process.ExitCode -ne 0) { throw "Inno Setup installation failed: $($process.ExitCode)" }
 
+      - name: Check region resolution
+        shell: pwsh
+        run: dotnet run --project tests/RegionResolverCheck/RegionResolverCheck.csproj
+
       - name: Check update metadata
         shell: pwsh
         run: dotnet run --project tests/UpdateCheck/UpdateCheck.csproj
 
-      - name: Build setup
+      - name: Build portable app and setup
         shell: pwsh
         run: ./installer/build.ps1
+
+      - name: Verify setup output
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content ValoTools.csproj
+          $version = [string]$project.Project.PropertyGroup.Version
+          $installer = Join-Path $PWD "dist/ValoTools-Setup-$version.exe"
+          $portableApp = Join-Path $PWD "dist/ValoTools-$version/ValoTools.exe"
+          if (-not (Test-Path -LiteralPath $installer) -or (Get-Item -LiteralPath $installer).Length -lt 1MB) {
+            throw "The versioned setup is missing or unexpectedly small: $installer"
+          }
+          if (-not (Test-Path -LiteralPath $portableApp)) {
+            throw "The portable app is missing: $portableApp"
+          }
 
       - name: Publish GitHub release
         shell: pwsh
