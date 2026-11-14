@@ -18,6 +18,9 @@ public sealed record ValorantPresence(string? GameName, string? GameTag)
         string.IsNullOrWhiteSpace(GameTag) ? GameName : $"{GameName}#{GameTag}";
 }
 
+public sealed record ValorantGameState(string SessionLoopState, string? QueueId, string? MapId,
+    string? AgentId, int? AllyScore, int? EnemyScore);
+
 public sealed class RiotClient : IDisposable
 {
     private const string AgentItemTypeId = "01bb38e1-da47-4e6a-9b3d-945fe4655707";
@@ -118,6 +121,128 @@ public sealed class RiotClient : IDisposable
         return current?.RootElement.TryGetProperty("MatchID", out var id) == true ? id.GetString() : null;
     }
 
+    public async Task<ValorantGameState?> GetGameStateForDiscordAsync(CancellationToken cancellationToken)
+    {
+        var lockfile = ReadLockfile();
+        if (lockfile is null)
+        {
+            DebugConsole.WriteLine("[DISCORD STATE] No Riot lockfile found.");
+            return null;
+        }
+        var context = await GetContextAsync(cancellationToken);
+        if (context is null)
+        {
+            DebugConsole.WriteLine("[DISCORD STATE] Riot session context is not ready.");
+            return null;
+        }
+
+        using var presences = await LocalGetAsync(lockfile.Value, "chat/v4/presences", cancellationToken);
+        if (!presences.RootElement.TryGetProperty("presences", out var list))
+        {
+            DebugConsole.WriteLine("[DISCORD STATE] Presence response has no 'presences' field.");
+            return null;
+        }
+        if (list.ValueKind != JsonValueKind.Array)
+        {
+            DebugConsole.WriteLine($"[DISCORD STATE] Presence list has unexpected JSON type: {list.ValueKind}.");
+            return null;
+        }
+
+        JsonElement playerPresence = default;
+        var presenceCount = list.GetArrayLength();
+        foreach (var entry in list.EnumerateArray())
+        {
+            if (entry.TryGetProperty("puuid", out var puuid) &&
+                string.Equals(puuid.GetString(), context.PlayerId, StringComparison.OrdinalIgnoreCase))
+            {
+                playerPresence = entry;
+                break;
+            }
+        }
+        if (playerPresence.ValueKind != JsonValueKind.Object)
+        {
+            DebugConsole.WriteLine($"[DISCORD STATE] No self-presence matched in {presenceCount} entries.");
+            return null;
+        }
+        if (!playerPresence.TryGetProperty("private", out var privateValue) ||
+            privateValue.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(privateValue.GetString()))
+        {
+            DebugConsole.WriteLine("[DISCORD STATE] Self-presence has no private game-state payload.");
+            return null;
+        }
+
+        using var privateData = JsonDocument.Parse(Convert.FromBase64String(privateValue.GetString()!));
+        var details = privateData.RootElement;
+        // Riot has moved match fields into nested matchPresenceData / partyPresenceData
+        // objects in newer presence payloads. Keep the flat lookup for older clients,
+        // then search nested objects so the game phase still resolves across versions.
+        var state = ReadString(details, "sessionLoopState") ?? ReadNestedString(details, "sessionLoopState");
+        if (string.IsNullOrWhiteSpace(state))
+        {
+            var propertyNames = details.ValueKind == JsonValueKind.Object
+                ? string.Join(",", details.EnumerateObject().Select(property => property.Name))
+                : details.ValueKind.ToString();
+            DebugConsole.WriteLine($"[DISCORD STATE] Private payload has no sessionLoopState; fields={propertyNames}.");
+            return null;
+        }
+        var queueId = ReadString(details, "queueId") ?? ReadNestedString(details, "queueId");
+        DebugConsole.WriteLine($"[DISCORD STATE] Detected phase {state}; queue={(string.IsNullOrWhiteSpace(queueId) ? "empty" : "present")}.");
+        var allyScore = ReadInt(details, "partyOwnerMatchScoreAllyTeam");
+        var enemyScore = ReadInt(details, "partyOwnerMatchScoreEnemyTeam");
+        string? mapId = null;
+        string? agentId = null;
+
+        if (state.Equals("PREGAME", StringComparison.OrdinalIgnoreCase))
+        {
+            var matchId = await GetPregameMatchIdAsync(context, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(matchId))
+            {
+                using var match = await RemoteAsync(context, HttpMethod.Get,
+                    $"pregame/v1/matches/{Uri.EscapeDataString(matchId)}", cancellationToken, allowNotFound: true);
+                if (match is not null)
+                {
+                    mapId = ReadString(match.RootElement, "MapID");
+                    if (string.IsNullOrWhiteSpace(queueId)) queueId = ReadString(match.RootElement, "ProvisioningFlow");
+                    if (match.RootElement.TryGetProperty("AllyTeam", out var allyTeam) &&
+                        allyTeam.TryGetProperty("Players", out var players) && players.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var player in players.EnumerateArray())
+                            if (string.Equals(ReadString(player, "Subject"), context.PlayerId, StringComparison.OrdinalIgnoreCase))
+                            {
+                                agentId = ReadString(player, "CharacterID");
+                                break;
+                            }
+                    }
+                }
+            }
+        }
+        else if (state.Equals("INGAME", StringComparison.OrdinalIgnoreCase))
+        {
+            var matchId = await GetCurrentGameMatchIdAsync(context, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(matchId))
+            {
+                using var match = await RemoteAsync(context, HttpMethod.Get,
+                    $"core-game/v1/matches/{Uri.EscapeDataString(matchId)}", cancellationToken, allowNotFound: true);
+                if (match is not null)
+                {
+                    mapId = ReadString(match.RootElement, "MapID");
+                    if (string.IsNullOrWhiteSpace(queueId)) queueId = ReadString(match.RootElement, "ProvisioningFlow");
+                    if (match.RootElement.TryGetProperty("Players", out var players) && players.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var player in players.EnumerateArray())
+                            if (string.Equals(ReadString(player, "Subject"), context.PlayerId, StringComparison.OrdinalIgnoreCase))
+                            {
+                                agentId = ReadString(player, "CharacterID");
+                                break;
+                            }
+                    }
+                }
+            }
+        }
+
+        return new ValorantGameState(state, queueId, mapId, agentId, allyScore, enemyScore);
+    }
+
     public async Task<Dictionary<string, (string GameName, string TagLine)>> GetPlayerNamesAsync(
         RiotContext context, IReadOnlyCollection<string> playerIds, CancellationToken cancellationToken)
     {
@@ -197,6 +322,44 @@ public sealed class RiotClient : IDisposable
     private static string? GetSocketItemId(JsonElement sockets, string socketId) =>
         sockets.TryGetProperty(socketId, out var socket) && socket.TryGetProperty("Item", out var item) &&
         item.TryGetProperty("ID", out var id) ? id.GetString() : null;
+
+    private static string? ReadString(JsonElement element, string property) =>
+        element.ValueKind == JsonValueKind.Object && element.TryGetProperty(property, out var value) &&
+        value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+    private static string? ReadNestedString(JsonElement element, string property)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var child in element.EnumerateObject())
+            {
+                if (string.Equals(child.Name, property, StringComparison.OrdinalIgnoreCase) &&
+                    child.Value.ValueKind == JsonValueKind.String &&
+                    !string.IsNullOrWhiteSpace(child.Value.GetString()))
+                    return child.Value.GetString();
+
+                var nested = ReadNestedString(child.Value, property);
+                if (!string.IsNullOrWhiteSpace(nested)) return nested;
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var child in element.EnumerateArray())
+            {
+                var nested = ReadNestedString(child, property);
+                if (!string.IsNullOrWhiteSpace(nested)) return nested;
+            }
+        }
+
+        return null;
+    }
+
+    private static int? ReadInt(JsonElement element, string property)
+    {
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(property, out var value)) return null;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)) return number;
+        return value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out number) ? number : null;
+    }
 
     public async Task<HashSet<string>> GetOwnedAgentIdsAsync(RiotContext context, CancellationToken cancellationToken)
     {

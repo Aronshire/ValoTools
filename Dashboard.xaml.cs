@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using ValoTools.Services;
 
 namespace ValoTools;
@@ -36,6 +37,7 @@ public partial class Dashboard : Window
 
     private readonly AgentCatalog _catalog = new();
     private readonly RiotClient _riot = new();
+    private readonly DiscordPresenceService _discordPresence;
     private readonly ObservableCollection<Agent> _visibleAgents = [];
     private List<Agent> _allAgents = [];
     private Agent? _selectedAgent;
@@ -57,11 +59,15 @@ public partial class Dashboard : Window
     private CancellationTokenSource? _liveLoadoutsCancellation;
     private string? _currentLiveMatchId;
     private List<LivePlayerLoadout> _livePlayers = [];
+    private CancellationTokenSource? _discordPresenceCancellation;
+    private bool _discordPresenceEnabled;
 
     public Dashboard()
     {
         InitializeComponent();
         AgentItems.ItemsSource = _visibleAgents;
+        _discordPresence = new DiscordPresenceService(_riot, () => _allAgents);
+        _discordPresence.StatusChanged += DiscordPresence_StatusChanged;
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -71,6 +77,104 @@ public partial class Dashboard : Window
         if (UpdateService.IsInstalled()) _ = WatchForUpdatesAsync();
         _ = WatchValorantPresenceAsync(_presenceCancellation.Token);
         await LoadAgentsAsync();
+        _discordPresenceEnabled = SettingsStore.LoadDiscordPresenceEnabled();
+        UpdateDiscordPresenceButton();
+        if (_discordPresenceEnabled) StartDiscordPresence();
+    }
+
+    private void DiscordRpcToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        _discordPresenceEnabled = !_discordPresenceEnabled;
+        SettingsStore.SaveDiscordPresenceEnabled(_discordPresenceEnabled);
+        UpdateDiscordPresenceButton();
+        if (_discordPresenceEnabled) StartDiscordPresence();
+        else _discordPresenceCancellation?.Cancel();
+    }
+
+    private void StartDiscordPresence()
+    {
+        if (_discordPresenceCancellation is not null) return;
+        var cancellation = new CancellationTokenSource();
+        _discordPresenceCancellation = cancellation;
+        _ = RunDiscordPresenceAsync(cancellation);
+    }
+
+    private async Task RunDiscordPresenceAsync(CancellationTokenSource cancellation)
+    {
+        try { await Task.Run(() => _discordPresence.RunAsync(cancellation.Token)); }
+        finally
+        {
+            if (ReferenceEquals(_discordPresenceCancellation, cancellation))
+            {
+                _discordPresenceCancellation = null;
+                if (_discordPresenceEnabled && !Dispatcher.HasShutdownStarted) StartDiscordPresence();
+            }
+            cancellation.Dispose();
+        }
+    }
+
+    private void UpdateDiscordPresenceButton()
+    {
+        DiscordRpcToggleButton.Tag = _discordPresenceEnabled ? "On" : "Off";
+        DiscordRpcToggleButton.ToolTip = _discordPresenceEnabled
+            ? "Rich Presence'ı kapat" : "Rich Presence'ı aç";
+        DiscordRpcToggleButton.ApplyTemplate();
+        if (DiscordRpcToggleButton.Template.FindName("SwitchTrack", DiscordRpcToggleButton) is Border switchTrack)
+        {
+            var targetColor = (Color)ColorConverter.ConvertFromString(
+                _discordPresenceEnabled ? "#26777C" : "#25292F");
+            var trackBrush = switchTrack.Background as SolidColorBrush;
+            if (trackBrush is null || trackBrush.IsFrozen)
+            {
+                trackBrush = trackBrush?.Clone() ?? new SolidColorBrush(targetColor);
+                switchTrack.Background = trackBrush;
+            }
+            if (IsLoaded)
+                trackBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(targetColor,
+                    TimeSpan.FromMilliseconds(220)) { EasingFunction = EaseOut });
+            else
+                trackBrush.Color = targetColor;
+        }
+        if (DiscordRpcToggleButton.Template.FindName("SwitchThumb", DiscordRpcToggleButton) is Ellipse thumb)
+        {
+            var thumbTransform = thumb.RenderTransform as TranslateTransform;
+            if (thumbTransform is null || thumbTransform.IsFrozen)
+            {
+                thumbTransform = thumbTransform?.Clone() ?? new TranslateTransform();
+                thumb.RenderTransform = thumbTransform;
+            }
+            var targetOffset = _discordPresenceEnabled ? 24d : 0d;
+            if (IsLoaded)
+                thumbTransform.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(targetOffset,
+                    TimeSpan.FromMilliseconds(240)) { EasingFunction = EaseOut });
+            else
+                thumbTransform.X = targetOffset;
+        }
+        DiscordRpcStatusText.Text = _discordPresenceEnabled
+            ? "Discord bağlantısı aranıyor" : "Rich Presence kapalı";
+        DiscordRpcStatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
+            _discordPresenceEnabled ? "#83D8DE" : "#777A82"));
+        DiscordRpcDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
+            _discordPresenceEnabled ? "#D9B979" : "#777A82"));
+    }
+
+    private void DiscordPresence_StatusChanged(DiscordPresenceUpdate update)
+    {
+        if (Dispatcher.HasShutdownStarted) return;
+        _ = Dispatcher.InvokeAsync(() =>
+        {
+            if (!_discordPresenceEnabled)
+            {
+                UpdateDiscordPresenceButton();
+                return;
+            }
+            DiscordRpcStatusText.Text = update.Status;
+            DiscordRpcStatusText.ToolTip = update.Preview;
+            DiscordRpcStatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
+                update.IsConnected ? "#83D8DE" : "#D9B979"));
+            DiscordRpcDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
+                update.IsConnected ? "#36B7C1" : "#D9B979"));
+        });
     }
 
     private async Task WatchForUpdatesAsync()
@@ -577,9 +681,11 @@ public partial class Dashboard : Window
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
+        _discordPresenceEnabled = false;
         _monitorCancellation?.Cancel();
         _presenceCancellation.Cancel();
         _updateCancellation.Cancel();
         _liveLoadoutsCancellation?.Cancel();
+        _discordPresenceCancellation?.Cancel();
     }
 }

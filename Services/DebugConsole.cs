@@ -4,6 +4,8 @@ internal static class DebugConsole
 {
     private static bool _enabled;
 
+    public static bool IsEnabled => _enabled;
+
     public static void Initialize(bool enabled, Func<bool> allocateConsole)
     {
         if (!enabled || !allocateConsole()) return;

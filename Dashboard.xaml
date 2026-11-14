@@ -141,6 +141,43 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="DiscordToggleSwitch" TargetType="Button">
+            <Setter Property="Width" Value="52"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="SwitchTrack" Background="#25292F" BorderBrush="#383D45"
+                                BorderThickness="1" CornerRadius="15" SnapsToDevicePixels="True">
+                            <Grid>
+                                <Ellipse x:Name="SwitchThumb" Width="20" Height="20" Fill="#E8ECEF"
+                                         HorizontalAlignment="Left" Margin="3,0,0,0" VerticalAlignment="Center">
+                                    <Ellipse.RenderTransform><TranslateTransform/></Ellipse.RenderTransform>
+                                </Ellipse>
+                                <TextBlock Text="✓" FontSize="8" FontWeight="Bold" Foreground="#DDF9FA"
+                                           HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           IsHitTestVisible="False"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SwitchTrack" Property="BorderBrush" Value="#54878C"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="SwitchThumb" Property="Opacity" Value="0.82"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="RoleChip" TargetType="RadioButton">
             <Setter Property="Foreground" Value="#A7ADB4"/>
             <Setter Property="FontSize" Value="10"/>
@@ -282,6 +319,18 @@
                         </StackPanel>
                         <TextBlock x:Name="PlayerIdentityText" Text="VALORANT oturumu aranıyor" FontSize="10" Foreground="#6E737B"
                                    TextTrimming="CharacterEllipsis" Margin="15,5,0,0"/>
+                        <Border Height="1" Background="#282A30" Margin="0,10,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="DISCORD RPC" Foreground="#85878D" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <Button x:Name="DiscordRpcToggleButton" Grid.Column="1" Tag="Off" ToolTip="Rich Presence'ı aç/kapat"
+                                    Style="{StaticResource DiscordToggleSwitch}" Click="DiscordRpcToggleButton_Click"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                            <Ellipse x:Name="DiscordRpcDot" Width="7" Height="7" Fill="#777A82" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock x:Name="DiscordRpcStatusText" Text="Rich Presence kapalı" FontSize="9" Foreground="#777A82"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </StackPanel>
