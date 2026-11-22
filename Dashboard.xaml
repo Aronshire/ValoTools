@@ -280,6 +280,12 @@
                     <TextBlock Text="Oyuncu Skinleri" Foreground="#A8ADB3" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 </StackPanel>
             </Button>
+            <Button x:Name="MessagesNavButton" Grid.Row="5" Height="46" VerticalAlignment="Top" Click="ShowMessagesPage_Click" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" Cursor="Hand">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="11,0,0,0">
+                    <TextBlock Text="✉" Foreground="#8A9196" FontSize="16" Margin="0,0,10,0"/>
+                    <TextBlock Text="Mesaj Geçmişi" Foreground="#A8ADB3" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
             <StackPanel Grid.Row="6">
                 <Border x:Name="UpdateCard" Background="#142124" BorderBrush="#28666B" BorderThickness="1" CornerRadius="13" Padding="13,11" Margin="0,0,0,10">
                     <StackPanel>
@@ -570,6 +576,125 @@
                                     </DataTemplate></ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Border>
+        <Border x:Name="MessagesPage" Grid.Column="1" Margin="0,10,10,10" Background="#040507" BorderBrush="#1C1D21" BorderThickness="1" CornerRadius="17" ClipToBounds="True" Visibility="Collapsed">
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="1"/><RowDefinition Height="88"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Border Grid.Row="0" Background="#25262B"/>
+                <Grid Grid.Row="1" Margin="32,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="VALOTOOLS  /  MESAJLAR" Foreground="{StaticResource Muted}" FontSize="10" FontWeight="SemiBold"/>
+                        <TextBlock Text="Mesaj Geçmişi" Foreground="#F4F5F6" FontFamily="./assets/fonts/#Barlow" FontStretch="Condensed" FontSize="32" FontWeight="Bold" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Background="#14161A" BorderBrush="#303238" BorderThickness="1" CornerRadius="18" Padding="14,8" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="ChatStatusDot" Width="8" Height="8" Fill="#777A82" Margin="0,0,9,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ChatPageStatusText" Text="Sohbetler yüklenmedi" Foreground="#C9D2D5" FontSize="10" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                <Grid Grid.Row="2" Margin="32,8,32,22">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="310"/><ColumnDefinition Width="22"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" CornerRadius="15" BorderBrush="#2C3035" BorderThickness="1" ClipToBounds="True">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#14191C" Offset="0"/><GradientStop Color="#0F1116" Offset="0.62"/><GradientStop Color="#102024" Offset="1"/></LinearGradientBrush>
+                        </Border.Background>
+                        <Grid Margin="17">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid Margin="2,0,2,12">
+                                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBlock Text="GÖRÜŞMELER" Foreground="{StaticResource Muted}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Style="{StaticResource RefreshButtonStyle}" Click="RefreshChatsButton_Click" ToolTip="Sohbet listesini yenile"/>
+                            </Grid>
+                            <TextBlock x:Name="ChatListStatusText" Grid.Row="1" Text="Riot sohbetleri bekleniyor..." Foreground="#6E737B" FontSize="10" TextWrapping="Wrap" Margin="2,0,2,10"/>
+                            <Grid Grid.Row="2">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource ModernScrollBar}"/></ScrollViewer.Resources>
+                                    <ItemsControl x:Name="ChatConversationItems">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Click="ChatConversation_Click" Tag="{Binding}" Background="Transparent" BorderThickness="0" Padding="0" FocusVisualStyle="{x:Null}" HorizontalContentAlignment="Stretch" Margin="0,0,0,7">
+                                                    <Button.Template><ControlTemplate TargetType="Button"><ContentPresenter/></ControlTemplate></Button.Template>
+                                                    <Border x:Name="ConversationCard" Background="#11161A" BorderBrush="#252D32" BorderThickness="1" CornerRadius="10" Padding="10,9">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                            <Border Width="34" Height="34" CornerRadius="17" Background="#1C3438" BorderBrush="#31585D" BorderThickness="1" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Initials}" Foreground="#9CE4E8" FontFamily="./assets/fonts/#Barlow" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,6,0">
+                                                                <TextBlock Text="{Binding DisplayName}" Foreground="#E8ECEF" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                                <TextBlock Text="{Binding Subtitle}" Foreground="#777F86" FontSize="9" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+                                                            </StackPanel>
+                                                            <Border Grid.Column="2" Background="#235E64" CornerRadius="9" Padding="6,3" VerticalAlignment="Center"
+                                                                    x:Name="UnreadBadge">
+                                                                <TextBlock Text="{Binding UnreadCount}" Foreground="#E9FFFF" FontSize="9" FontWeight="Bold"/>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Border>
+                                                </Button>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter TargetName="ConversationCard" Property="Background" Value="#183237"/>
+                                                        <Setter TargetName="ConversationCard" Property="BorderBrush" Value="#347A80"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding UnreadCount}" Value="0">
+                                                        <Setter TargetName="UnreadBadge" Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                <TextBlock x:Name="ChatListEmptyText" Text="Sohbet bulunamadı." Foreground="#777A82" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" IsHitTestVisible="False"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Column="2" Background="#0F1015" BorderBrush="#25262B" BorderThickness="1" CornerRadius="14" Padding="18">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid Margin="4,0,4,12">
+                                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="KONUŞMA" Foreground="{StaticResource Muted}" FontSize="10" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="SelectedConversationText" Text="Bir kişi seç" Foreground="#F4F5F6" FontFamily="./assets/fonts/#Barlow" FontStretch="Condensed" FontSize="25" FontWeight="Bold" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                <TextBlock x:Name="SelectedConversationDetailText" Grid.Column="1" Foreground="#747B82" FontSize="10" VerticalAlignment="Bottom" Margin="12,0,0,5" TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                            <Grid Grid.Row="1">
+                                <ScrollViewer x:Name="ChatMessagesScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource ModernScrollBar}"/></ScrollViewer.Resources>
+                                    <ItemsControl x:Name="ChatMessageItems">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border x:Name="MessageBubble" HorizontalAlignment="Left" MaxWidth="620" Background="#171B20" BorderBrush="#2A3037" BorderThickness="1" CornerRadius="12" Padding="12,9" Margin="0,0,0,9">
+                                                    <StackPanel>
+                                                        <Grid Margin="0,0,0,5">
+                                                            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                            <TextBlock x:Name="MessageSenderText" Text="{Binding SenderDisplayName}" Foreground="#79C9D0" FontSize="10" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding TimeLabel}" Foreground="#737A82" FontSize="9" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                        <TextBlock Text="{Binding Body}" Foreground="#E5E8EA" FontSize="12" TextWrapping="Wrap" MaxWidth="590"/>
+                                                    </StackPanel>
+                                                </Border>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsOutgoing}" Value="True">
+                                                        <Setter TargetName="MessageBubble" Property="HorizontalAlignment" Value="Right"/>
+                                                        <Setter TargetName="MessageBubble" Property="Background" Value="#183237"/>
+                                                        <Setter TargetName="MessageBubble" Property="BorderBrush" Value="#28595E"/>
+                                                        <Setter TargetName="MessageSenderText" Property="Foreground" Value="#A5E5E8"/>
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                <TextBlock x:Name="ChatMessagesEmptyText" Text="Mesajları görüntülemek için soldan bir konuşma seç." Foreground="#777A82" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" IsHitTestVisible="False"/>
+                            </Grid>
                         </Grid>
                     </Border>
                 </Grid>

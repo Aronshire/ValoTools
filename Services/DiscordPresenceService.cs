@@ -218,12 +218,16 @@ internal sealed class DiscordPresenceService(RiotClient riot, Func<IReadOnlyColl
         {
             "competitive" => "Rekabetçi",
             "unrated" => "Derecesiz",
-            "swiftplay" => "Hızlı Oyun",
+            "swiftplay" => "Tam Gaz",
+            "hurm" => "Takımlı Ölüm Maçı",
             "deathmatch" => "Ölüm Maçı",
             "ggteam" or "escalation" => "Tırmanış",
             "onefa" or "replication" => "Kopya",
             "spikerush" => "Spike Rush",
             "customgame" or "custom" => "Özel Oyun",
+            "abilitydraftarena" => "Galeyan: Güç Bozulması",
+            "skirmish2v2" => "Çarpışma: 2'ye 2",
+            "replaynewplayerexperience" => "Temel Eğitim",
             _ => queueId
         };
     }

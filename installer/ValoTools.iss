@@ -1,5 +1,5 @@
 #define AppName "ValoTools"
-#define AppVersion "1.2.5"
+#define AppVersion "1.2.6"
 #define AppExe "ValoTools.exe"
 
 [Setup]

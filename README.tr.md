@@ -8,6 +8,8 @@ Ajanları role göre filtreleyebilir veya isme göre arayabilirsiniz. Sol alttak
 
 **Oyuncu Skinleri** sayfası, devam eden maçtaki oyuncuları BLUE ve RED takımlarına göre listeler. Bu sayfa açıldığında ve maç değiştiğinde oyuncu adlarını, ajanları, silah skinlerini ve buddy'leri yükler; maç kimliğini 10 saniyede bir kontrol eder.
 
+**Mesaj Geçmişi** sayfası, yerel Riot Client'tan etkin konuşmaları ve katılımcı adlarını listeler. Mesaj geçmişini yalnızca bir konuşmayı seçtiğinizde ister; mesajlar bilgisayarınızda görüntülenir ve ValoTools tarafından kaydedilmez.
+
 İsteğe bağlı **Discord RPC** anahtarı, mevcut VALORANT durumunu kuyruk, harita, ajan ve varsa skor bilgileriyle Discord Rich Presence olarak paylaşır. Açık kaynaklı [Discord RPC C#](https://github.com/Lachee/discord-rpc-csharp) kütüphanesiyle çalışan Discord masaüstü uygulamasına yerel IPC üzerinden bağlanır ve yan menüden kapatılabilir.
 
 Şimdilik ValoCord projesindeki Discord uygulama kimliği kullanılıyor; Discord etkinlikte o uygulama için kayıtlı adı gösterir. ValoTools markalı görünüm için Discord Developer Portal'da ValoTools adına bir uygulama kimliği gerekir. Discord, onaylanmamış RPC uygulamalarını ayrıca onaylı test kullanıcılarıyla sınırlar.
@@ -26,11 +28,11 @@ dotnet run --project ValoTools.csproj
 
 Bir ajan seçip **İzlemeyi Başlat** düğmesine basın. Bölgeyi elle seçmeniz gerekmez. Uygulama önce VALORANT oturumunun GLZ adresini, ardından Riot Client bölge bilgisini, son olarak güncel ShooterGame günlüğünü kontrol eder. Bölge güvenilir biçimde belirlenemezse varsayılan bir bölge seçmek yerine hata gösterir.
 
-`./installer/build.ps1` çalıştırıldığında küçük, .NET çalışma ortamını sistemden kullanan uygulama `dist\ValoTools-1.2.5` klasörüne, kurulum dosyası da yanına oluşturulur. Taşınabilir uygulama için .NET 10 Desktop Runtime gerekir; kurulum dosyası bu çalışma ortamını içerir. ValoTools, eski ValoInsta ayarlarını ilk açılışta okur.
+`./installer/build.ps1` çalıştırıldığında küçük, .NET çalışma ortamını sistemden kullanan uygulama `dist\ValoTools-1.2.6` klasörüne, kurulum dosyası da yanına oluşturulur. Taşınabilir uygulama için .NET 10 Desktop Runtime gerekir; kurulum dosyası bu çalışma ortamını içerir. ValoTools, eski ValoInsta ayarlarını ilk açılışta okur.
 
 ## Windows kurulumu
 
-`dist\ValoTools-Setup-1.2.5.exe`, x64 Windows 10/11 için kurulum dosyasıdır. .NET 10 Desktop Runtime pakete dahildir. Yönetici izni istemeden mevcut kullanıcı hesabına kurulur, Başlat menüsüne kısayol ekler, isteğe bağlı masaüstü kısayolu sunar ve Windows'un Uygulamalar bölümünden kaldırılabilir. Aynı uygulama kimliğini kullanarak eski ValoInsta kurulumunu da günceller.
+`dist\ValoTools-Setup-1.2.6.exe`, x64 Windows 10/11 için kurulum dosyasıdır. .NET 10 Desktop Runtime pakete dahildir. Yönetici izni istemeden mevcut kullanıcı hesabına kurulur, Başlat menüsüne kısayol ekler, isteğe bağlı masaüstü kısayolu sunar ve Windows'un Uygulamalar bölümünden kaldırılabilir. Aynı uygulama kimliğini kullanarak eski ValoInsta kurulumunu da günceller.
 
 Kurulu uygulama açılışta ve açık kaldığı sürece 30 dakikada bir [GitHub Releases](https://github.com/Aronshire/ValoTools/releases/latest) üzerinden güncellemeleri denetler. Yan menüde mevcut sürüm ve **Güncellemeyi kontrol et** düğmesi görünür. Yeni sürüm varsa `ValoTools-Setup-<sürüm>.exe` dosyasını arka planda indirir, GitHub'ın yayımladığı SHA-256 özetiyle doğrular ve **Güncellemeyi kur** düğmesini gösterir. Kurulum bu düğmeye bastığınızda başlar. Kaynak koddan çalıştırılan sürüm otomatik denetim yapmaz; elle kontrol düğmesini kullanabilirsiniz.
 

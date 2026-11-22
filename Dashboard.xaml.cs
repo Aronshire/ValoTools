@@ -59,6 +59,10 @@ public partial class Dashboard : Window
     private CancellationTokenSource? _liveLoadoutsCancellation;
     private string? _currentLiveMatchId;
     private List<LivePlayerLoadout> _livePlayers = [];
+    private CancellationTokenSource? _chatListCancellation;
+    private CancellationTokenSource? _chatHistoryCancellation;
+    private string _currentChatPlayerId = "";
+    private List<RiotChatConversation> _chatConversations = [];
     private CancellationTokenSource? _discordPresenceCancellation;
     private bool _discordPresenceEnabled;
 
@@ -447,29 +451,175 @@ public partial class Dashboard : Window
 
     private void ShowAgentsPage_Click(object sender, RoutedEventArgs e)
     {
+        CancelChatRequests();
         _liveLoadoutsCancellation?.Cancel();
         _liveLoadoutsCancellation?.Dispose();
         _liveLoadoutsCancellation = null;
         AgentsPage.Visibility = Visibility.Visible;
         LoadoutsPage.Visibility = Visibility.Collapsed;
-        AgentNavButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#142629"));
-        AgentNavButton.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#235E64"));
-        MatchLoadoutsNavButton.Background = Brushes.Transparent;
-        MatchLoadoutsNavButton.BorderBrush = Brushes.Transparent;
+        MessagesPage.Visibility = Visibility.Collapsed;
+        SetActiveNavigation(AgentNavButton);
     }
 
     private void ShowLoadoutsPage_Click(object sender, RoutedEventArgs e)
     {
+        CancelChatRequests();
         AgentsPage.Visibility = Visibility.Collapsed;
         LoadoutsPage.Visibility = Visibility.Visible;
-        AgentNavButton.Background = Brushes.Transparent;
-        AgentNavButton.BorderBrush = Brushes.Transparent;
-        MatchLoadoutsNavButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#142629"));
-        MatchLoadoutsNavButton.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#235E64"));
+        MessagesPage.Visibility = Visibility.Collapsed;
+        SetActiveNavigation(MatchLoadoutsNavButton);
         _liveLoadoutsCancellation?.Cancel();
         _liveLoadoutsCancellation?.Dispose();
         _liveLoadoutsCancellation = new CancellationTokenSource();
         _ = WatchLiveLoadoutsAsync(_liveLoadoutsCancellation.Token);
+    }
+
+    private async void ShowMessagesPage_Click(object sender, RoutedEventArgs e)
+    {
+        _liveLoadoutsCancellation?.Cancel();
+        _liveLoadoutsCancellation?.Dispose();
+        _liveLoadoutsCancellation = null;
+        AgentsPage.Visibility = Visibility.Collapsed;
+        LoadoutsPage.Visibility = Visibility.Collapsed;
+        MessagesPage.Visibility = Visibility.Visible;
+        SetActiveNavigation(MessagesNavButton);
+        await LoadChatConversationsAsync();
+    }
+
+    private void SetActiveNavigation(Button activeButton)
+    {
+        foreach (var button in new[] { AgentNavButton, MatchLoadoutsNavButton, MessagesNavButton })
+        {
+            var isActive = ReferenceEquals(button, activeButton);
+            button.Background = isActive
+                ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#142629"))
+                : Brushes.Transparent;
+            button.BorderBrush = isActive
+                ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#235E64"))
+                : Brushes.Transparent;
+        }
+    }
+
+    private void CancelChatRequests()
+    {
+        var listCancellation = _chatListCancellation;
+        _chatListCancellation = null;
+        listCancellation?.Cancel();
+        listCancellation?.Dispose();
+
+        var historyCancellation = _chatHistoryCancellation;
+        _chatHistoryCancellation = null;
+        historyCancellation?.Cancel();
+        historyCancellation?.Dispose();
+    }
+
+    private async void RefreshChatsButton_Click(object sender, RoutedEventArgs e) =>
+        await LoadChatConversationsAsync();
+
+    private async Task LoadChatConversationsAsync()
+    {
+        _chatListCancellation?.Cancel();
+        _chatListCancellation?.Dispose();
+        var cancellation = new CancellationTokenSource();
+        _chatListCancellation = cancellation;
+
+        _chatHistoryCancellation?.Cancel();
+        _chatHistoryCancellation?.Dispose();
+        _chatHistoryCancellation = null;
+        _currentChatPlayerId = "";
+        _chatConversations = [];
+        ChatConversationItems.ItemsSource = null;
+        ChatMessageItems.ItemsSource = null;
+        ChatListEmptyText.Text = "Sohbetler yükleniyor...";
+        ChatListEmptyText.Visibility = Visibility.Visible;
+        ChatListStatusText.Text = "Yerel Riot sohbetleri okunuyor...";
+        ChatPageStatusText.Text = "SOHBETLER YÜKLENİYOR";
+        ChatStatusDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D9B979"));
+        SelectedConversationText.Text = "Bir kişi seç";
+        SelectedConversationDetailText.Text = "";
+        ChatMessagesEmptyText.Text = "Mesajları görüntülemek için soldan bir konuşma seç.";
+        ChatMessagesEmptyText.Visibility = Visibility.Visible;
+
+        try
+        {
+            var overview = await _riot.GetChatConversationsAsync(cancellation.Token);
+            if (!ReferenceEquals(_chatListCancellation, cancellation)) return;
+
+            _currentChatPlayerId = overview.CurrentPlayerId;
+            _chatConversations = overview.Conversations.ToList();
+            ChatConversationItems.ItemsSource = _chatConversations;
+            ChatListEmptyText.Text = _chatConversations.Count == 0 ? "Aktif sohbet bulunamadı." : "";
+            ChatListEmptyText.Visibility = _chatConversations.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            ChatListStatusText.Text = _chatConversations.Count == 0
+                ? "Riot Client'ta gösterilecek bir konuşma yok."
+                : "Mesaj içeriği, bir konuşmayı seçtiğinde yüklenir.";
+            ChatPageStatusText.Text = $"{_chatConversations.Count} GÖRÜŞME";
+            ChatStatusDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#36B7C1"));
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            DebugConsole.WriteLine($"[CHAT] Conversation list failed: {ex.GetType().Name}.");
+            ChatListEmptyText.Text = "Sohbetler yüklenemedi.";
+            ChatListEmptyText.Visibility = Visibility.Visible;
+            ChatListStatusText.Text = "Riot Client'ın açık olduğundan emin olup Yenile'ye bas.";
+            ChatPageStatusText.Text = "SOHBETLER ALINAMADI";
+            ChatStatusDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D9B979"));
+        }
+        finally
+        {
+            if (ReferenceEquals(_chatListCancellation, cancellation)) _chatListCancellation = null;
+            cancellation.Dispose();
+        }
+    }
+
+    private async void ChatConversation_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: RiotChatConversation conversation }) return;
+
+        foreach (var item in _chatConversations)
+            item.IsSelected = ReferenceEquals(item, conversation);
+        ChatConversationItems.Items.Refresh();
+
+        _chatHistoryCancellation?.Cancel();
+        _chatHistoryCancellation?.Dispose();
+        var cancellation = new CancellationTokenSource();
+        _chatHistoryCancellation = cancellation;
+        ChatMessageItems.ItemsSource = null;
+        ChatMessagesEmptyText.Text = "Mesaj geçmişi yükleniyor...";
+        ChatMessagesEmptyText.Visibility = Visibility.Visible;
+        SelectedConversationText.Text = conversation.DisplayName;
+        SelectedConversationDetailText.Text = conversation.Subtitle;
+        ChatPageStatusText.Text = "MESAJLAR YÜKLENİYOR";
+        ChatStatusDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D9B979"));
+
+        try
+        {
+            var messages = await _riot.GetChatHistoryAsync(
+                conversation.Id, _currentChatPlayerId, cancellation.Token);
+            if (!ReferenceEquals(_chatHistoryCancellation, cancellation)) return;
+
+            ChatMessageItems.ItemsSource = messages;
+            ChatMessagesEmptyText.Text = "Bu konuşmada gösterilecek mesaj yok.";
+            ChatMessagesEmptyText.Visibility = messages.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            ChatPageStatusText.Text = $"{messages.Count} MESAJ";
+            ChatStatusDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#36B7C1"));
+            if (messages.Count > 0) ChatMessagesScroll.ScrollToEnd();
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            DebugConsole.WriteLine($"[CHAT] Message history failed: {ex.GetType().Name}.");
+            ChatMessagesEmptyText.Text = "Mesajlar alınamadı. Konuşma listesini yenileyip tekrar dene.";
+            ChatMessagesEmptyText.Visibility = Visibility.Visible;
+            ChatPageStatusText.Text = "MESAJLAR ALINAMADI";
+            ChatStatusDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D9B979"));
+        }
+        finally
+        {
+            if (ReferenceEquals(_chatHistoryCancellation, cancellation)) _chatHistoryCancellation = null;
+            cancellation.Dispose();
+        }
     }
 
     private async Task WatchLiveLoadoutsAsync(CancellationToken cancellationToken)
@@ -682,6 +832,7 @@ public partial class Dashboard : Window
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
         _discordPresenceEnabled = false;
+        CancelChatRequests();
         _monitorCancellation?.Cancel();
         _presenceCancellation.Cancel();
         _updateCancellation.Cancel();

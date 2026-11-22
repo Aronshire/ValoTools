@@ -1,4 +1,5 @@
 using System.IO;
+using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -20,6 +21,22 @@ public sealed record ValorantPresence(string? GameName, string? GameTag)
 
 public sealed record ValorantGameState(string SessionLoopState, string? QueueId, string? MapId,
     string? AgentId, int? AllyScore, int? EnemyScore);
+
+public sealed record RiotChatParticipant(string PlayerId, string GameName, string GameTag, string Name);
+
+public sealed record RiotChatConversation(string Id, string Type, bool DirectMessages, bool HistoryAvailable,
+    int UnreadCount, IReadOnlyList<RiotChatParticipant> Participants, string DisplayName, string Subtitle, string Initials)
+{
+    public bool IsSelected { get; set; }
+}
+
+public sealed record RiotChatOverview(string CurrentPlayerId, IReadOnlyList<RiotChatConversation> Conversations);
+
+public sealed record RiotChatMessage(string ConversationId, string SenderDisplayName, string Body,
+    DateTimeOffset? SentAt, bool IsOutgoing)
+{
+    public string TimeLabel => SentAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "";
+}
 
 public sealed class RiotClient : IDisposable
 {
@@ -105,6 +122,126 @@ public sealed class RiotClient : IDisposable
             root.GetProperty("accessToken").GetString() ?? throw new InvalidOperationException("Erişim tokenı eksik."),
             root.GetProperty("token").GetString() ?? throw new InvalidOperationException("Entitlement tokenı eksik."),
             version, route);
+    }
+
+    public async Task<RiotChatOverview> GetChatConversationsAsync(CancellationToken cancellationToken)
+    {
+        var lockfile = ReadLockfile();
+        if (lockfile is null) throw new InvalidOperationException("Riot Client açık değil.");
+
+        using var conversationResponse = await LocalGetAsync(lockfile.Value, "chat/v6/conversations", cancellationToken);
+        if (!conversationResponse.RootElement.TryGetProperty("conversations", out var conversationList) ||
+            conversationList.ValueKind != JsonValueKind.Array)
+            throw new JsonException("Sohbet listesi beklenen biçimde değil.");
+
+        var participantsTask = LocalGetAsync(lockfile.Value, "chat/v5/participants", cancellationToken);
+        var sessionTask = LocalGetAsync(lockfile.Value, "chat/v1/session", cancellationToken);
+        await Task.WhenAll(participantsTask, sessionTask);
+        using var participantsResponse = await participantsTask;
+        using var sessionResponse = await sessionTask;
+
+        var currentPlayerId = ReadString(sessionResponse.RootElement, "puuid") ?? "";
+        var participantsByConversation = new Dictionary<string, List<RiotChatParticipant>>(StringComparer.OrdinalIgnoreCase);
+        if (participantsResponse.RootElement.TryGetProperty("participants", out var participantList) &&
+            participantList.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var participant in participantList.EnumerateArray())
+            {
+                var conversationId = ReadString(participant, "cid");
+                if (string.IsNullOrWhiteSpace(conversationId)) continue;
+                if (!participantsByConversation.TryGetValue(conversationId, out var conversationParticipants))
+                {
+                    conversationParticipants = [];
+                    participantsByConversation[conversationId] = conversationParticipants;
+                }
+
+                conversationParticipants.Add(new RiotChatParticipant(
+                    ReadString(participant, "puuid") ?? "",
+                    ReadString(participant, "game_name") ?? "",
+                    ReadString(participant, "game_tag") ?? "",
+                    ReadString(participant, "name") ?? ReadString(participant, "pid") ?? ""));
+            }
+        }
+
+        var conversations = new List<RiotChatConversation>();
+        foreach (var item in conversationList.EnumerateArray())
+        {
+            var id = ReadString(item, "cid");
+            if (string.IsNullOrWhiteSpace(id)) continue;
+
+            var type = ReadString(item, "type") ?? "chat";
+            var participants = participantsByConversation.GetValueOrDefault(id) ?? [];
+            var otherParticipants = participants.Where(participant =>
+                string.IsNullOrWhiteSpace(currentPlayerId) ||
+                !string.Equals(participant.PlayerId, currentPlayerId, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (otherParticipants.Length == 0) otherParticipants = participants.ToArray();
+            var names = otherParticipants.Select(GetChatParticipantDisplayName)
+                .Where(name => !string.IsNullOrWhiteSpace(name)).ToArray();
+            var unreadCount = ReadInt(item, "unread_count") ?? 0;
+            var isGroup = type.Equals("groupchat", StringComparison.OrdinalIgnoreCase);
+            var displayName = isGroup
+                ? names.Length switch
+                {
+                    0 => "Grup sohbeti",
+                    1 => names[0],
+                    2 => $"{names[0]}, {names[1]}",
+                    _ => $"{names[0]}, {names[1]} +{names.Length - 2}"
+                }
+                : names.FirstOrDefault() ?? "İsimsiz sohbet";
+            var subtitle = isGroup
+                ? $"Grup sohbeti • {otherParticipants.Length} katılımcı"
+                : "Birebir mesajlaşma";
+            var initials = displayName.Trim().Length == 0 ? "•" : displayName.Trim()[..1].ToUpperInvariant();
+
+            conversations.Add(new RiotChatConversation(id, type,
+                ReadBool(item, "direct_messages"), ReadBool(item, "message_history"), unreadCount,
+                participants, displayName, subtitle, initials));
+        }
+
+        return new RiotChatOverview(currentPlayerId, conversations
+            .OrderByDescending(conversation => conversation.UnreadCount)
+            .ThenBy(conversation => conversation.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ToArray());
+    }
+
+    public async Task<IReadOnlyList<RiotChatMessage>> GetChatHistoryAsync(
+        string conversationId, string currentPlayerId, CancellationToken cancellationToken)
+    {
+        var lockfile = ReadLockfile();
+        if (lockfile is null) throw new InvalidOperationException("Riot Client açık değil.");
+
+        var endpoint = $"chat/v6/messages?cid={Uri.EscapeDataString(conversationId)}";
+        using var response = await LocalGetAsync(lockfile.Value, endpoint, cancellationToken);
+        if (!response.RootElement.TryGetProperty("messages", out var messages) || messages.ValueKind != JsonValueKind.Array)
+            throw new JsonException("Mesaj geçmişi beklenen biçimde değil.");
+
+        var result = new List<(int Index, RiotChatMessage Message)>();
+        var index = 0;
+        foreach (var item in messages.EnumerateArray())
+        {
+            var playerId = ReadString(item, "puuid") ?? "";
+            var gameName = ReadString(item, "game_name") ?? "";
+            var gameTag = ReadString(item, "game_tag") ?? "";
+            var sender = !string.IsNullOrWhiteSpace(currentPlayerId) &&
+                         string.Equals(playerId, currentPlayerId, StringComparison.OrdinalIgnoreCase)
+                ? "Sen"
+                : !string.IsNullOrWhiteSpace(gameName)
+                    ? string.IsNullOrWhiteSpace(gameTag) ? gameName : $"{gameName}#{gameTag}"
+                    : ReadString(item, "name") ?? "Bilinmeyen oyuncu";
+
+            result.Add((index++, new RiotChatMessage(
+                ReadString(item, "cid") ?? conversationId,
+                sender,
+                ReadString(item, "body") ?? "",
+                ReadChatTimestamp(item),
+                !string.IsNullOrWhiteSpace(currentPlayerId) &&
+                string.Equals(playerId, currentPlayerId, StringComparison.OrdinalIgnoreCase))));
+        }
+
+        return result.OrderBy(entry => entry.Message.SentAt ?? DateTimeOffset.MinValue)
+            .ThenBy(entry => entry.Index)
+            .Select(entry => entry.Message)
+            .ToArray();
     }
 
     public async Task<string?> GetPregameMatchIdAsync(RiotContext context, CancellationToken cancellationToken)
@@ -327,6 +464,40 @@ public sealed class RiotClient : IDisposable
         element.ValueKind == JsonValueKind.Object && element.TryGetProperty(property, out var value) &&
         value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
+    private static bool ReadBool(JsonElement element, string property) =>
+        element.ValueKind == JsonValueKind.Object && element.TryGetProperty(property, out var value) &&
+        value.ValueKind == JsonValueKind.True;
+
+    private static string GetChatParticipantDisplayName(RiotChatParticipant participant) =>
+        !string.IsNullOrWhiteSpace(participant.GameName)
+            ? string.IsNullOrWhiteSpace(participant.GameTag)
+                ? participant.GameName
+                : $"{participant.GameName}#{participant.GameTag}"
+            : participant.Name;
+
+    private static DateTimeOffset? ReadChatTimestamp(JsonElement message)
+    {
+        if (message.ValueKind != JsonValueKind.Object || !message.TryGetProperty("time", out var value)) return null;
+        string? raw = value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number => value.GetRawText(),
+            _ => null
+        };
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+
+        if (long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var unixMilliseconds))
+        {
+            try { return DateTimeOffset.FromUnixTimeMilliseconds(unixMilliseconds); }
+            catch (ArgumentOutOfRangeException) { return null; }
+        }
+
+        return DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed)
+            ? parsed
+            : null;
+    }
+
     private static string? ReadNestedString(JsonElement element, string property)
     {
         if (element.ValueKind == JsonValueKind.Object)
@@ -452,7 +623,9 @@ public sealed class RiotClient : IDisposable
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://127.0.0.1:{lockfile.Port}/{endpoint}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Basic",
             Convert.ToBase64String(Encoding.UTF8.GetBytes($"riot:{lockfile.Password}")));
-        DebugConsole.WriteLine($"[LOCAL] GET https://127.0.0.1:{lockfile.Port}/{endpoint} (credentials hidden)");
+        var queryIndex = endpoint.IndexOf('?');
+        var logEndpoint = queryIndex >= 0 ? $"{endpoint[..queryIndex]}?[query hidden]" : endpoint;
+        DebugConsole.WriteLine($"[LOCAL] GET https://127.0.0.1:{lockfile.Port}/{logEndpoint} (credentials hidden)");
         using var response = await _local.SendAsync(request, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
         DebugConsole.WriteLine($"[LOCAL] {(int)response.StatusCode} {response.StatusCode}; response body hidden for safety");

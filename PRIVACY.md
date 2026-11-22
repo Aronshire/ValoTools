@@ -1,6 +1,6 @@
 # ValoTools Privacy Policy
 
-Last updated: 14 November 2026
+Last updated: 22 November 2026
 
 ValoTools is a local Windows application. It has no developer-operated server, account system, advertising, or analytics. It does not send Riot credentials, Riot ID, match data, or logs to the ValoTools maintainer.
 
@@ -9,12 +9,14 @@ ValoTools is a local Windows application. It has no developer-operated server, a
 - ValoTools reads the Riot Client lockfile and, when necessary to determine the game region, the recent `ShooterGame.log` file. It communicates with the Riot Client through its local HTTPS interface (`127.0.0.1`).
 - It reads the current Riot ID for display and obtains temporary session tokens from the local Riot Client. These tokens are kept in application memory and used only to make the requested VALORANT pregame API calls. They are not written to ValoTools settings.
 - The selected agent ID is saved in `%APPDATA%\ValoTools\settings.json`. On first use, an older `%APPDATA%\ValoInsta\settings.json` may be read to restore the previous selection.
+- The **Mesaj Geçmişi** page reads active conversation metadata and participant names from the local Riot Client. Message contents are requested only after you select a conversation and are displayed in memory; they are not saved to ValoTools settings or debug logs, sent to Discord, or sent to the ValoTools maintainer.
 - If enabled, Discord Rich Presence reads the local VALORANT session state and sends the game phase, queue, map, agent, score, phase start time, and public artwork URLs to the running Discord desktop client over its local IPC pipe using the [Discord RPC C# library](https://github.com/Lachee/discord-rpc-csharp). It does not send Riot credentials, Riot ID, or match ID to Discord. The on/off preference is stored in `%APPDATA%\ValoTools\settings.json`.
 - Downloaded installers are stored in `%LOCALAPPDATA%\ValoTools\Updates` until removed by the user. The application verifies their SHA-256 digest before offering installation.
 
 ## Network connections
 
 - `valorant-api.com` supplies the public agent and map catalogs. Agent artwork is loaded from the image URLs supplied by that API. No Riot token is sent with these requests.
+- The local Riot Client's chat endpoints provide the conversation list, participant names, and the message history for the conversation you select. Message text stays in ValoTools memory and is not uploaded.
 - Riot Games' VALORANT game service receives authenticated pregame and live-match requests when Discord Rich Presence is enabled. Agent locking is requested only after the user starts monitoring.
 - Discord Rich Presence uses Discord's local IPC connection; ValoTools does not make a separate network request to Discord. Discord's desktop client handles its own network connection and receives only the Rich Presence fields described above.
 - `api.github.com` is queried for new ValoTools releases when the installed app starts, every 30 minutes while it runs, or when the user presses the update button. If a newer release is available, its installer is downloaded from GitHub. No Riot token or Riot ID is sent to GitHub.
